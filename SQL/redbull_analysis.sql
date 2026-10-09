@@ -1,0 +1,508 @@
+-- create database RedBull_Analysis;
+-- USE redbull_analysis;
+-- CREATE TABLE redbull_sales (
+--     Transaction_ID VARCHAR(20),
+--     Sale_Date DATE,
+--     Year INT,
+--     Quarter VARCHAR(5),
+--     Month INT,
+--     Month_Name VARCHAR(20),
+--     Day_Name VARCHAR(20),
+--     Country VARCHAR(50),
+--     Currency VARCHAR(10),
+--     Product VARCHAR(100),
+--     Edition_Flavor VARCHAR(100),
+--     Sales_Channel VARCHAR(50),
+--     Customer_Segment VARCHAR(20),
+--     Campaign VARCHAR(50),
+--     Units_Sold INT,
+--     Unit_Price DECIMAL(12,2),
+--     Discount_Pct DECIMAL(5,2),
+--     Gross_Revenue DECIMAL(15,2),
+--     Discount_Amount DECIMAL(15,2),
+--     Net_Revenue DECIMAL(15,2),
+--     Product_Cost DECIMAL(15,2),
+--     Gross_Profit DECIMAL(15,2),
+--     Marketing_Spend DECIMAL(15,2),
+--     Profit_After_Marketing DECIMAL(15,2),
+--     Impressions INT,
+--     Clicks INT,
+--     Conversions INT
+-- );
+
+-- select count(*) as total_rows from redbull_sales;
+-- select min(Sale_Date) as Start_Date, max(Sale_Date) as End_Date from redbull_sales;     
+
+-- select Transaction_ID, count(*) as duplicates from redbull_sales group by Transaction_ID having count(*) > 1;
+
+-- SELECT
+--     COUNT(*) AS total_rows,
+--     SUM(Transaction_ID IS NULL) AS missing_transaction_id,
+--     SUM(Sale_Date IS NULL) AS missing_date,
+--     SUM(Country IS NULL) AS missing_country,
+--     SUM(Product IS NULL) AS missing_product,
+--     SUM(Units_Sold IS NULL) AS missing_units,
+--     SUM(Net_Revenue IS NULL) AS missing_revenue,
+--     SUM(Product_Cost IS NULL) AS missing_cost
+-- FROM redbull_sales;
+
+-- SELECT *
+-- FROM redbull_sales
+-- WHERE Units_Sold <= 0
+--    OR Unit_Price < 0
+--    OR Net_Revenue < 0
+--    OR Product_Cost < 0;
+--    
+--    SELECT
+--     Year,
+--     COUNT(*) AS transactions
+-- FROM redbull_sales
+-- GROUP BY Year
+-- ORDER BY Year;
+
+
+-- Analysis Part....
+
+-- SELECT
+--     SUM(Units_Sold) AS total_units,
+--     SUM(Net_Revenue) AS total_revenue,
+--     SUM(Gross_Profit) AS total_profit,
+--     SUM(Marketing_Spend) AS total_marketing_spend,
+--     SUM(Profit_After_Marketing) AS profit_after_marketing
+-- FROM redbull_sales;
+
+-- SELECT
+--     SUM(Units_Sold) AS total_units,
+--     SUM(Net_Revenue) AS total_revenue,
+--     SUM(Gross_Profit) AS total_profit,
+--     SUM(Marketing_Spend) AS total_marketing_spend,
+--     SUM(Profit_After_Marketing) AS profit_after_marketing
+-- FROM redbull_sales;
+
+-- SELECT
+--     ROUND(
+--         SUM(Gross_Profit) / SUM(Net_Revenue) * 100,
+--         2
+--     ) AS profit_margin
+-- FROM redbull_sales;
+
+-- SELECT
+--     ROUND(
+--         SUM(Net_Revenue) / NULLIF(SUM(Marketing_Spend), 0),
+--         2
+--     ) AS ROAS
+-- FROM redbull_sales;
+
+-- Product Analysis
+
+-- SELECT
+--     Product,
+--     SUM(Units_Sold) AS Total_Units,
+--     SUM(Net_Revenue) AS Total_Revenue,
+--     SUM(Gross_Profit) AS Total_Profit
+-- FROM redbull_sales
+-- GROUP BY Product
+-- ORDER BY Total_Revenue DESC;
+
+-- SELECT
+--     Product,
+--     SUM(Net_Revenue) AS Total_Revenue,
+--     SUM(Gross_Profit) AS Total_Profit,
+--     ROUND(
+--         SUM(Gross_Profit) / SUM(Net_Revenue) * 100,
+--         2
+--     ) AS Profit_Margin
+-- FROM redbull_sales
+-- GROUP BY Product
+-- ORDER BY Profit_Margin DESC;
+
+-- SELECT
+--     Product,
+--     SUM(Net_Revenue) AS Revenue,
+--     ROUND(
+--         SUM(Net_Revenue) * 100 /
+--         SUM(SUM(Net_Revenue)) OVER(),
+--         2
+--     ) AS Revenue_Share
+-- FROM redbull_sales
+-- GROUP BY Product
+-- ORDER BY Revenue DESC;
+
+-- Conversion of money into USD 
+
+-- CREATE TABLE currency_rates (
+--     Currency VARCHAR(10),
+--     USD_Rate DECIMAL(12,6)
+-- );
+
+-- INSERT INTO currency_rates (Currency, USD_Rate)
+-- VALUES
+-- ('INR', 0.0120),
+-- ('USD', 1.0000),
+-- ('GBP', 1.2800),
+-- ('EUR', 1.0900),
+-- ('CHF', 1.1300),
+-- ('CAD', 0.7400),
+-- ('MXN', 0.0550),
+-- ('AUD', 0.6500),
+-- ('JPY', 0.0067),
+-- ('SGD', 0.7500),
+-- ('AED', 0.2723),
+-- ('SAR', 0.2667),
+-- ('ZAR', 0.0550),
+-- ('BRL', 0.1850),
+-- ('PLN', 0.2550);
+
+-- SELECT *
+-- FROM currency_rates;
+
+-- use redbull_analysis;
+
+
+-- SELECT
+--     r.Transaction_ID,
+--     r.Country,
+--     r.Currency,
+--     r.Net_Revenue AS Local_Revenue,
+--     c.USD_Rate,
+--     ROUND(r.Net_Revenue * c.USD_Rate, 2) AS Revenue_USD
+-- FROM redbull_sales r
+-- JOIN currency_rates c
+--     ON r.Currency = c.Currency
+-- LIMIT 10;
+
+-- SELECT
+--     r.Product,
+--     SUM(r.Units_Sold) AS Total_Units,
+--     ROUND(SUM(r.Net_Revenue * c.USD_Rate), 2) AS Revenue_USD
+-- FROM redbull_sales r
+-- JOIN currency_rates c
+--     ON r.Currency = c.Currency
+-- GROUP BY r.Product
+-- ORDER BY Revenue_USD DESC;
+
+-- SELECT
+--     r.Product,
+--     ROUND(SUM(r.Net_Revenue * c.USD_Rate), 2) AS Revenue_USD,
+--     ROUND(
+--         SUM(r.Net_Revenue * c.USD_Rate) /
+--         SUM(SUM(r.Net_Revenue * c.USD_Rate)) OVER() * 100,
+--         2
+--     ) AS Revenue_Share
+-- FROM redbull_sales r
+-- JOIN currency_rates c
+--     ON r.Currency = c.Currency
+-- GROUP BY r.Product
+-- ORDER BY Revenue_USD DESC;
+
+-- SELECT
+--     r.Product,
+--     ROUND(SUM(r.Gross_Profit * c.USD_Rate), 2) AS Gross_Profit_USD,
+--     ROUND(
+--         SUM(r.Gross_Profit * c.USD_Rate) /
+--         SUM(r.Net_Revenue * c.USD_Rate) * 100,
+--         2
+--     ) AS Profit_Margin
+-- FROM redbull_sales r
+-- JOIN currency_rates c
+--     ON r.Currency = c.Currency
+-- GROUP BY r.Product
+-- ORDER BY Gross_Profit_USD DESC;
+
+-- SELECT
+--     Product,
+--     Year,
+--     SUM(Units_Sold) AS Units_Sold
+-- FROM redbull_sales
+-- GROUP BY Product, Year
+-- ORDER BY Product, Year;
+
+-- WITH yearly_product AS (
+--     SELECT
+--         r.Product,
+--         r.Year,
+--         SUM(r.Net_Revenue * c.USD_Rate) AS Revenue_USD
+--     FROM redbull_sales r
+--     JOIN currency_rates c
+--         ON r.Currency = c.Currency
+--     GROUP BY r.Product, r.Year
+-- ),
+-- growth AS (
+--     SELECT
+--         Product,
+--         Year,
+--         Revenue_USD,
+--         LAG(Revenue_USD) OVER (
+--             PARTITION BY Product
+--             ORDER BY Year
+--         ) AS Previous_Year_Revenue
+--     FROM yearly_product
+-- )
+-- SELECT
+--     Product,
+--     Year,
+--     ROUND(Revenue_USD, 2) AS Revenue_USD,
+--     ROUND(Previous_Year_Revenue, 2) AS Previous_Year_Revenue,
+--     ROUND(
+--         (Revenue_USD - Previous_Year_Revenue)
+--         / NULLIF(Previous_Year_Revenue, 0) * 100,
+--         2
+--     ) AS YoY_Growth
+-- FROM growth
+-- ORDER BY Product, Year;
+
+-- country analysis
+
+-- SELECT
+--     r.Country,
+--     COUNT(*) AS Transactions,
+--     SUM(r.Units_Sold) AS Units_Sold,
+--     ROUND(SUM(r.Net_Revenue * c.USD_Rate), 2) AS Revenue_USD,
+--     ROUND(SUM(r.Gross_Profit * c.USD_Rate), 2) AS Profit_USD
+-- FROM redbull_sales r
+-- JOIN currency_rates c
+--     ON r.Currency = c.Currency
+-- GROUP BY r.Country
+-- ORDER BY Revenue_USD DESC;
+
+-- SELECT
+--     r.Country,
+--     ROUND(SUM(r.Net_Revenue * c.USD_Rate), 2) AS Revenue_USD,
+--     ROUND(SUM(r.Gross_Profit * c.USD_Rate), 2) AS Profit_USD,
+--     ROUND(
+--         SUM(r.Gross_Profit * c.USD_Rate)
+--         / NULLIF(SUM(r.Net_Revenue * c.USD_Rate), 0) * 100,
+--         2
+--     ) AS Profit_Margin
+-- FROM redbull_sales r
+-- JOIN currency_rates c
+--     ON r.Currency = c.Currency
+-- GROUP BY r.Country
+-- ORDER BY Profit_Margin DESC;
+
+-- SELECT
+--     r.Country,
+--     r.Product,
+--     SUM(r.Units_Sold) AS Units_Sold,
+--     ROUND(SUM(r.Net_Revenue * c.USD_Rate), 2) AS Revenue_USD
+-- FROM redbull_sales r
+-- JOIN currency_rates c
+--     ON r.Currency = c.Currency
+-- GROUP BY r.Country, r.Product
+-- ORDER BY r.Country, Revenue_USD DESC;
+ 
+-- Channel Analysis 
+ 
+-- SELECT
+--     r.Sales_Channel,
+--     COUNT(*) AS Transactions,
+--     SUM(r.Units_Sold) AS Units_Sold,
+--     ROUND(SUM(r.Net_Revenue * c.USD_Rate), 2) AS Revenue_USD,
+--     ROUND(SUM(r.Gross_Profit * c.USD_Rate), 2) AS Profit_USD
+-- FROM redbull_sales r
+-- JOIN currency_rates c
+--     ON r.Currency = c.Currency
+-- GROUP BY r.Sales_Channel
+-- ORDER BY Revenue_USD DESC;
+
+-- SELECT
+--     r.Sales_Channel,
+--     ROUND(SUM(r.Net_Revenue * c.USD_Rate), 2) AS Revenue_USD,
+--     ROUND(SUM(r.Gross_Profit * c.USD_Rate), 2) AS Profit_USD,
+--     ROUND(
+--         SUM(r.Gross_Profit * c.USD_Rate)
+--         / NULLIF(SUM(r.Net_Revenue * c.USD_Rate), 0) * 100,
+--         2
+--     ) AS Profit_Margin
+-- FROM redbull_sales r
+-- JOIN currency_rates c
+--     ON r.Currency = c.Currency
+-- GROUP BY r.Sales_Channel
+-- ORDER BY Profit_Margin DESC;
+
+-- Customer Segment 
+-- SELECT
+--     r.Customer_Segment,
+--     COUNT(*) AS Transactions,
+--     SUM(r.Units_Sold) AS Units_Sold,
+--     ROUND(SUM(r.Net_Revenue * c.USD_Rate), 2) AS Revenue_USD,
+--     ROUND(SUM(r.Gross_Profit * c.USD_Rate), 2) AS Profit_USD
+-- FROM redbull_sales r
+-- JOIN currency_rates c
+--     ON r.Currency = c.Currency
+-- GROUP BY r.Customer_Segment
+-- ORDER BY Revenue_USD DESC;
+
+-- Marketing Analysis
+
+-- SELECT
+--     r.Campaign,
+--     ROUND(SUM(r.Net_Revenue * c.USD_Rate), 2) AS Revenue_USD,
+--     ROUND(SUM(r.Marketing_Spend * c.USD_Rate), 2) AS Marketing_Spend_USD,
+--     ROUND(
+--         SUM(r.Net_Revenue * c.USD_Rate)
+--         / NULLIF(SUM(r.Marketing_Spend * c.USD_Rate), 0),
+--         2
+--     ) AS ROAS,
+--     SUM(r.Impressions) AS Impressions,
+--     SUM(r.Clicks) AS Clicks,
+--     SUM(r.Conversions) AS Conversions
+-- FROM redbull_sales r
+-- JOIN currency_rates c
+--     ON r.Currency = c.Currency
+-- GROUP BY r.Campaign
+-- ORDER BY ROAS DESC;
+
+-- SELECT
+--     Campaign,
+--     SUM(Impressions) AS Impressions,
+--     SUM(Clicks) AS Clicks,
+--     SUM(Conversions) AS Conversions,
+--     ROUND(
+--         SUM(Clicks) / NULLIF(SUM(Impressions), 0) * 100,
+--         2
+--     ) AS CTR_Percent,
+--     ROUND(
+--         SUM(Conversions) / NULLIF(SUM(Clicks), 0) * 100,
+--         2
+--     ) AS Conversion_Rate_Percent
+-- FROM redbull_sales
+-- GROUP BY Campaign
+-- ORDER BY Conversion_Rate_Percent DESC;
+
+-- Time Analysis
+
+-- SELECT
+--     r.Year,
+--     r.Month,
+--     r.Month_Name,
+--     ROUND(SUM(r.Net_Revenue * c.USD_Rate), 2) AS Revenue_USD
+-- FROM redbull_sales r
+-- JOIN currency_rates c
+--     ON r.Currency = c.Currency
+-- GROUP BY r.Year, r.Month, r.Month_Name
+-- ORDER BY r.Year, r.Month;
+
+-- SELECT
+--     r.Year,
+--     r.Quarter,
+--     ROUND(SUM(r.Net_Revenue * c.USD_Rate), 2) AS Revenue_USD,
+--     SUM(r.Units_Sold) AS Units_Sold
+-- FROM redbull_sales r
+-- JOIN currency_rates c
+--     ON r.Currency = c.Currency
+-- GROUP BY r.Year, r.Quarter
+-- ORDER BY r.Year, r.Quarter;
+
+
+-- Advance SQL 
+
+-- WITH product_revenue AS (
+--     SELECT
+--         r.Product,
+--         SUM(r.Net_Revenue * c.USD_Rate) AS Revenue_USD
+--     FROM redbull_sales r
+--     JOIN currency_rates c
+--         ON r.Currency = c.Currency
+--     GROUP BY r.Product
+-- ),
+-- ranked AS (
+--     SELECT
+--         Product,
+--         Revenue_USD,
+--         RANK() OVER (ORDER BY Revenue_USD DESC) AS Revenue_Rank
+--     FROM product_revenue
+-- )
+-- SELECT
+--     Product,
+--     ROUND(Revenue_USD, 2) AS Revenue_USD,
+--     Revenue_Rank
+-- FROM ranked
+-- WHERE Revenue_Rank <= 5
+-- ORDER BY Revenue_Rank;
+
+-- WITH country_product AS (
+--     SELECT
+--         r.Country,
+--         r.Product,
+--         SUM(r.Net_Revenue * c.USD_Rate) AS Revenue_USD
+--     FROM redbull_sales r
+--     JOIN currency_rates c
+--         ON r.Currency = c.Currency
+--     GROUP BY r.Country, r.Product
+-- ),
+-- ranked AS (
+--     SELECT
+--         Country,
+--         Product,
+--         Revenue_USD,
+--         RANK() OVER (
+--             PARTITION BY Country
+--             ORDER BY Revenue_USD DESC
+--         ) AS Product_Rank
+--     FROM country_product
+-- )
+-- SELECT
+--     Country,
+--     Product,
+--     ROUND(Revenue_USD, 2) AS Revenue_USD
+-- FROM ranked
+-- WHERE Product_Rank = 1
+-- ORDER BY Country;
+
+-- WITH monthly AS (
+--     SELECT
+--         r.Year,
+--         r.Month,
+--         r.Month_Name,
+--         SUM(r.Net_Revenue * c.USD_Rate) AS Revenue_USD
+--     FROM redbull_sales r
+--     JOIN currency_rates c
+--         ON r.Currency = c.Currency
+--     GROUP BY r.Year, r.Month, r.Month_Name
+-- )
+-- SELECT
+--     Year,
+--     Month,
+--     Month_Name,
+--     ROUND(Revenue_USD, 2) AS Revenue_USD,
+--     ROUND(
+--         LAG(Revenue_USD) OVER (
+--             ORDER BY Year, Month
+--         ),
+--         2
+--     ) AS Previous_Month_Revenue,
+--     ROUND(
+--         (
+--             Revenue_USD -
+--             LAG(Revenue_USD) OVER (
+--                 ORDER BY Year, Month
+--             )
+--         )
+--         / NULLIF(
+--             LAG(Revenue_USD) OVER (
+--                 ORDER BY Year, Month
+--             ), 0
+--         ) * 100,
+--         2
+--     ) AS MoM_Growth
+-- FROM monthly
+-- ORDER BY Year, Month;
+
+-- USE redbull_analysis;
+
+-- CREATE VIEW redbull_analysis_view AS
+-- SELECT
+--     r.*,
+--     c.USD_Rate,
+--     ROUND(r.Net_Revenue * c.USD_Rate, 2) AS Revenue_USD,
+--     ROUND(r.Product_Cost * c.USD_Rate, 2) AS Product_Cost_USD,
+--     ROUND(r.Gross_Profit * c.USD_Rate, 2) AS Gross_Profit_USD,
+--     ROUND(r.Marketing_Spend * c.USD_Rate, 2) AS Marketing_Spend_USD,
+--     ROUND(r.Profit_After_Marketing * c.USD_Rate, 2) AS Profit_After_Marketing_USD
+-- FROM redbull_sales r
+-- JOIN currency_rates c
+--     ON r.Currency = c.Currency;
+    
+-- SELECT *
+-- FROM redbull_analysis_view;
